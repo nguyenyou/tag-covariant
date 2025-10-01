@@ -63,3 +63,69 @@ The + makes the trait more flexible by preserving the subtype relationship throu
     processTags(SpanTag) // ✓ Works!
   }
 }
+
+object Demo {
+  trait Modifier[-El <: ReactiveElement] {
+    def apply(element: El): Unit = ()
+  }
+  // Type hierarchy
+  class ReactiveElement {
+    var className: String = ""
+    var id: String = ""
+  }
+
+  class DivElement extends ReactiveElement {
+    var divSpecificProp: String = ""
+  }
+
+  class SpanElement extends DivElement {
+    var spanSpecificProp: String = ""
+  }
+
+// Concrete modifier implementations
+  object GeneralModifier extends Modifier[ReactiveElement] {
+    override def apply(element: ReactiveElement): Unit = {
+      element.className = "styled"
+      println(s"Applied general styling to element")
+    }
+  }
+
+  object DivModifier extends Modifier[DivElement] {
+    override def apply(element: DivElement): Unit = {
+      element.className = "div-styled"
+      element.divSpecificProp = "special"
+      println(s"Applied div-specific styling")
+    }
+  }
+
+  object SpanModifier extends Modifier[SpanElement] {
+    override def apply(element: SpanElement): Unit = {
+      element.spanSpecificProp = "span-value"
+      println(s"Applied span-specific styling")
+    }
+  }
+
+// Demonstrating contravariance:
+  val divElement = new DivElement
+  val spanElement = new SpanElement
+
+// Because of - contravariance, we can assign MORE GENERAL modifiers
+// to variables expecting MORE SPECIFIC modifiers (reverse of covariance!)
+  val divMod: Modifier[DivElement] = GeneralModifier // ✓ Works!
+  val spanMod1: Modifier[SpanElement] = GeneralModifier // ✓ Works!
+  val spanMod2: Modifier[SpanElement] = DivModifier // ✓ Works!
+
+// Apply them
+  divMod.apply(divElement) // Uses GeneralModifier on DivElement
+  spanMod1.apply(spanElement) // Uses GeneralModifier on SpanElement
+  spanMod2.apply(spanElement) // Uses DivModifier on SpanElement
+
+// Practical use case - function that needs a specific modifier:
+  def applyDivModifier(element: DivElement, mod: Modifier[DivElement]): Unit = {
+    mod.apply(element)
+  }
+
+  applyDivModifier(divElement, GeneralModifier) // ✓ Works!
+  applyDivModifier(divElement, DivModifier) // ✓ Works!
+  // applyDivModifier(divElement, SpanModifier) // ✗ Doesn't work!
+}
